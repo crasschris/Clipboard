@@ -1,11 +1,88 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Clipboard App — Initial Commit</title>
-  </head>
-  <body>
-    <h1>Clipboard App</h1>
-    <p>Initial setup successful. More content coming soon.</p>
-  </body>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quick Clipboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Basic favicon (optional) -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='64' width='64'%3E%3Ctext y='50' x='5' font-size='48'%3E%F0%9F%93%8B%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Quick Clipboard</h1>
+    <div class="actions">
+      <button id="addTextBtn" class="btn">Add Text</button>
+      <button id="removeSelectedBtn" class="btn danger" disabled>Remove Selected</button>
+    </div>
+  </header>
+
+  <section class="toolbar">
+    <div class="search-wrap">
+      <input id="searchBox" type="search" placeholder="Filter items… (type to search)" autocomplete="off" />
+    </div>
+    <div class="toggles">
+      <label class="chk">
+        <input id="alwaysOnTop" type="checkbox" disabled />
+        <span>Always on top (PWA app window later)</span>
+      </label>
+      <label class="chk">
+        <input id="autoClose" type="checkbox" />
+        <span>Close after copy</span>
+      </label>
+    </div>
+  </section>
+
+  <main class="content">
+    <aside class="sidebar">
+      <h2>Categories</h2>
+      <ul id="categoryList" class="category-list">
+        <!-- Filled by app.js -->
+      </ul>
+    </aside>
+
+    <section class="list-area">
+      <div class="list-toolbar">
+        <span id="countLabel">0 items</span>
+        <div class="list-actions">
+          <button id="copyBtn" class="btn primary" disabled>Copy</button>
+          <button id="copyCloseBtn" class="btn" disabled>Copy & Close</button>
+        </div>
+      </div>
+
+      <ul id="itemList" class="item-list" tabindex="0" aria-label="Clipboard items list (use arrow keys)">
+        <!-- Filled by app.js -->
+      </ul>
+    </section>
+  </main>
+
+  <footer class="statusbar">
+    <span id="status">Ready.</span>
+  </footer>
+
+  <!-- Minimal “Add Text” dialog -->
+  <dialog id="addTextDialog">
+    <form method="dialog" class="dialog-form">
+      <h3>Add Text Item</h3>
+      <label>
+        Label
+        <input id="dlgLabel" type="text" placeholder="Display name (e.g., 'Next week Awaiting response.')" required />
+      </label>
+      <label>
+        Value
+        <textarea id="dlgValue" rows="3" placeholder="What gets copied to the clipboard…" required></textarea>
+      </label>
+      <label>
+        Category
+        <input id="dlgCategory" type="text" placeholder="(Optional) e.g., 'Phrases' or 'UPNs'" />
+      </label>
+      <menu class="dialog-actions">
+        <button value="cancel">Cancel</button>
+        <button id="dlgOk" value="ok" class="primary">Add</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
 </html>
