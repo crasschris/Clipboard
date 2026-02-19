@@ -1,5 +1,5 @@
 // Simple cache for static assets
-const CACHE = 'qc-clipboard-v1';
+const CACHE = 'qc-clipboard-v3';
 const ASSETS = [
   './',
   './index.html',
