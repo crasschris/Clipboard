@@ -25,6 +25,10 @@
       <button id="addTextBtn" class="btn">Add Text</button>
       <button id="removeSelectedBtn" class="btn danger" disabled>Remove Selected</button>
       <button id="refreshBtn" class="btn">Refresh</button>
+      <button id="editBtn" class="btn" disabled>Edit</button>
+      <button id="bulkAddBtn" class="btn">Bulk Add</button>
+
+      
     </div>
   </header>
 
@@ -99,6 +103,55 @@
   </form>
 </dialog>
 
+<!-- Edit Item dialog -->
+<dialog id="editDialog">
+  <form method="dialog" class="dialog-form">
+    <h3>Edit Item</h3>
+
+    <label>
+      Label
+      <input id="editLabel" type="text" required />
+    </label>
+
+    <label>
+      Value
+      <textarea id="editValue" rows="3" required></textarea>
+    </label>
+
+    <label>
+      Category
+      <input id="editCategory" type="text" />
+    </label>
+
+    <menu class="dialog-actions">
+      <button type="button" id="editCancel">Cancel</button>
+      <button id="editOk" value="ok" class="primary">Save</button>
+    </menu>
+  </form>
+</dialog>
+
+<!-- Bulk Add dialog -->
+<dialog id="bulkDialog">
+  <form method="dialog" class="dialog-form">
+    <h3>Bulk Add (one per line)</h3>
+
+    <label>
+      Items
+      <textarea id="bulkText" rows="10"
+        placeholder="Each line becomes a new item. Use 'label=value'. If no '=', label is used as value."></textarea>
+    </label>
+
+    <label>
+      Category (optional)
+      <input id="bulkCategory" type="text" placeholder="e.g., 'Phrases' or 'UPNs'" />
+    </label>
+
+    <menu class="dialog-actions">
+      <button type="button" id="bulkCancel">Cancel</button>
+      <button id="bulkOk" value="ok" class="primary">Add</button>
+    </menu>
+  </form>
+</dialog>
 
   <!-- JS -->
   <script src="app.js" defer></script>
