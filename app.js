@@ -118,8 +118,6 @@ function filteredItems(){
   });
 }
 
-let selectedIndices = new Set();
-
 function renderList(){
   const list = filteredItems();
   itemList.innerHTML = '';
