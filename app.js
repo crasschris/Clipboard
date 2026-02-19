@@ -187,7 +187,20 @@ function confirmAddText(){
 }
 
 // --- Wire up ---
-searchBox.addEventListener('input', () => { renderList(); });
+
+searchBox.addEventListener('input', () => {
+  renderList();
+
+  // auto-select first item
+  const list = filteredItems();
+  if (list.length > 0) {
+    selectedIndices.clear();
+    selectedIndices.add(0);
+    renderSelection();
+    updateButtons();
+  }
+});
+
 
 copyBtn.addEventListener('click', async () => {
   await doCopy();
@@ -204,15 +217,72 @@ addTextDialog.addEventListener('close', () => {
   if (addTextDialog.returnValue === 'ok') confirmAddText();
 });
 
-// Keyboard shortcuts on list
+// Keyboard shortcuts on list (navigation + copy)
 itemList.addEventListener('keydown', async (e) => {
-  // Enter or Ctrl+C to copy
+  const list = filteredItems();
+  const max = list.length - 1;
+
+  // --- Navigation ---
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (selectedIndices.size === 0) {
+      selectedIndices.add(0);
+    } else {
+      const idx = Math.max(...selectedIndices);
+      selectedIndices.clear();
+      selectedIndices.add(Math.min(idx + 1, max));
+    }
+    renderSelection();
+    updateButtons();
+    return;
+  }
+
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (selectedIndices.size === 0) {
+      selectedIndices.add(0);
+    } else {
+      const idx = Math.min(...selectedIndices);
+      selectedIndices.clear();
+      selectedIndices.add(Math.max(idx - 1, 0));
+    }
+    renderSelection();
+    updateButtons();
+    return;
+  }
+
+  if (e.key === 'Home') {
+    e.preventDefault();
+    selectedIndices.clear();
+    selectedIndices.add(0);
+    renderSelection();
+    updateButtons();
+    return;
+  }
+
+  if (e.key === 'End') {
+    e.preventDefault();
+    selectedIndices.clear();
+    selectedIndices.add(max);
+    renderSelection();
+    updateButtons();
+    return;
+  }
+
+  // --- Copy ---
   if (e.key === 'Enter' || (e.ctrlKey && e.key.toLowerCase() === 'c')) {
     await doCopy();
-    if (autoClose.checked) window.close();
+    if (autoClose.checked && window.matchMedia('(display-mode: standalone)').matches) {
+      window.close();
+    }
+    return;
   }
+
+  // --- Delete ---
   if (e.key === 'Delete') {
+    e.preventDefault();
     doRemoveSelected();
+    return;
   }
 });
 
@@ -233,3 +303,18 @@ window.addEventListener('keydown', (e) => {
     setTimeout(() => searchBox.focus(), 10);
   }
 });
+
+
+// Global typing autofocus (for super-fast workflow)
+window.addEventListener('keydown', (e) => {
+  if (document.querySelector('dialog[open]')) return; // don't steal focus in dialogs
+
+  // Only printable keys
+  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    setTimeout(() => searchBox.focus(), 10);
+  }
+});
+
+
+
+
