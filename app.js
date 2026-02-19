@@ -222,3 +222,14 @@ renderList();
 
 // Focus search at load for quick typing
 window.addEventListener('load', () => searchBox.focus());
+
+// Always refocus search after a short delay if user starts typing
+window.addEventListener('keydown', (e) => {
+  // Don’t override shortcuts inside dialogs
+  if (document.querySelector('dialog[open]')) return;
+
+  const isCharacter = e.key.length === 1;
+  if (isCharacter && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    setTimeout(() => searchBox.focus(), 10);
+  }
+});
