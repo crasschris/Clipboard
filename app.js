@@ -79,6 +79,27 @@ const dlgLabel = document.getElementById('dlgLabel');
 const dlgValue = document.getElementById('dlgValue');
 const dlgCategory = document.getElementById('dlgCategory');
 
+// New buttons
+const editBtn = document.getElementById('editBtn');
+const bulkAddBtn = document.getElementById('bulkAddBtn');
+
+// New dialogs & fields
+const editDialog = document.getElementById('editDialog');
+const editLabel = document.getElementById('editLabel');
+const editValue = document.getElementById('editValue');
+const editCategory = document.getElementById('editCategory');
+
+const bulkDialog = document.getElementById('bulkDialog');
+const bulkText = document.getElementById('bulkText');
+const bulkCategory = document.getElementById('bulkCategory');
+
+// Cancel buttons for new dialogs
+const editCancelBtn = document.getElementById('editCancel');
+if (editCancelBtn) editCancelBtn.addEventListener('click', () => editDialog.close('cancel'));
+
+const bulkCancelBtn = document.getElementById('bulkCancel');
+if (bulkCancelBtn) bulkCancelBtn.addEventListener('click', () => bulkDialog.close('cancel'));
+
 const autoClose = document.getElementById('autoClose');
 
 // Refresh button (optional)
@@ -209,6 +230,7 @@ function updateButtons(){
   copyBtn.disabled = !hasSel;
   copyCloseBtn.disabled = !hasSel;
   removeSelectedBtn.disabled = !hasSel;
+  if (editBtn) editBtn.disabled = !(selectedIndices.size === 1); 
 }
 
 // Copy selected (joins with newlines)
@@ -235,6 +257,92 @@ function doRemoveSelected(){
   selectedIndices.clear();
   renderList(); renderCategories();
   status.textContent = `Removed ${selected.length} item(s).`;
+}
+
+// === Edit (enable only when exactly one item is selected) ===
+function openEditDialog(){
+  const list = filteredItems();
+  if (selectedIndices.size !== 1) return;
+  const idx = [...selectedIndices][0];
+  const it = list[idx];
+
+  // Pre-fill fields
+  editLabel.value = it.label;
+  editValue.value = it.value || '';
+  editCategory.value = (it.category && it.category.trim()) || 'Uncategorised';
+
+  editDialog.showModal();
+}
+
+function confirmEdit(){
+  const list = filteredItems();
+  if (selectedIndices.size !== 1) return;
+  const idx = [...selectedIndices][0];
+  const it = list[idx];
+
+  // Update the same object (list refs point into items array)
+  it.label = editLabel.value.trim();
+  it.value = editValue.value;
+  it.category = (editCategory.value && editCategory.value.trim()) || 'Uncategorised';
+
+  saveItemsLocal();               // persist local edits
+  editDialog.close('ok');
+  renderList(); renderCategories();
+  status.textContent = 'Saved changes.';
+}
+
+// Wire Edit buttons
+if (editBtn) {
+  editBtn.addEventListener('click', () => openEditDialog());
+}
+const editOkBtn = document.getElementById('editOk');
+if (editOkBtn) {
+  editOkBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    confirmEdit();
+  });
+}
+
+// === Bulk Add ===
+function openBulkDialog(){
+  bulkText.value = '';
+  bulkCategory.value = '';
+  bulkDialog.showModal();
+}
+
+function confirmBulkAdd(){
+  const lines = bulkText.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const cat = (bulkCategory.value && bulkCategory.value.trim()) || 'Uncategorised';
+  let added = 0;
+
+  for (const line of lines) {
+    const eq = line.indexOf('=');
+    if (eq > -1) {
+      const label = line.slice(0, eq).trim();
+      const value = line.slice(eq+1).trim();
+      if (label && value) { items.unshift({ label, value, category: cat }); added++; }
+    } else {
+      items.unshift({ label: line, value: line, category: cat });
+      added++;
+    }
+  }
+
+  saveItemsLocal();               // persist
+  bulkDialog.close('ok');
+  renderList(); renderCategories();
+  status.textContent = `Added ${added} item(s).`;
+}
+
+// Wire Bulk buttons
+if (bulkAddBtn) {
+  bulkAddBtn.addEventListener('click', () => openBulkDialog());
+}
+const bulkOkBtn = document.getElementById('bulkOk');
+if (bulkOkBtn) {
+  bulkOkBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    confirmBulkAdd();
+  });
 }
 
 // Add text dialog
