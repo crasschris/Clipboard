@@ -87,6 +87,22 @@ if (refreshBtn) {
   refreshBtn.addEventListener('click', () => refreshFromRemote(true));
 }
 
+/* ========= Add Text dialog: cancel wiring ========= */
+
+// Grab the Cancel button from the dialog
+const dlgCancelBtn = document.getElementById('dlgCancel');
+if (dlgCancelBtn) {
+  dlgCancelBtn.addEventListener('click', () => {
+    // Simply close the dialog; do not submit the form
+    addTextDialog.close('cancel');
+
+    // (optional) clear the fields so next open starts fresh
+    dlgLabel.value = '';
+    dlgValue.value = '';
+    dlgCategory.value = '';
+  });
+}
+
 
 // --- Helpers ---
 function unique(arr){ return [...new Set(arr)]; }
