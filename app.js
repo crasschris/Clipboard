@@ -1,18 +1,67 @@
-// --- Initial demo data (non-secret phrases only) ---
-const defaultItems = [
-  { label: 'Next week Awaiting response.', value: 'Next week Awaiting response.', category: 'Phrases' },
-  { label: 'Next week Resolve if no reply received within 7 days.', value: 'Next week Resolve if no reply received within 7 days.', category: 'Phrases' },
-  { label: 'Please let me know when it might be convenient for me to call you.', value: 'Please let me know when it might be convenient for me to call you.', category: 'Phrases' },
+// ===== Remote data source (edit the JSON file in GitHub, not the code) =====
+const REMOTE_ITEMS_URL = './data/items.json';
 
-  { label: 'azuread\\Chris.Jones.Admin@LGADigital.onmicrosoft.com', value: 'azuread\\Chris.Jones.Admin@LGADigital.onmicrosoft.com', category: 'UPNs' },
-  { label: 'azuread\\Chris.Jones.Admin@southwark.onmicrosoft.com', value: 'azuread\\Chris.Jones.Admin@southwark.onmicrosoft.com', category: 'UPNs' },
-  { label: 'azuread\\Chris.Jones.Admin@LewishamCouncil.onmicrosoft.com', value: 'azuread\\Chris.Jones.Admin@LewishamCouncil.onmicrosoft.com', category: 'UPNs' },
-  { label: 'azuread\\Chris.Jones.Admin@lbdigitalservices.onmicrosoft.com', value: 'azuread\\Chris.Jones.Admin@lbdigitalservices.onmicrosoft.com', category: 'UPNs' }
-];
-
-// --- State (in-memory only for now) ---
-let items = [...defaultItems];
+// In-memory state (start empty; we'll load remote or local below)
+let items = [];
 let activeCategory = 'All';
+let selectedIndices = new Set();
+
+// Storage keys for local persistence (for offline use and your local edits)
+const STORAGE = {
+  items: 'qc.items.v1',
+  settings: 'qc.settings.v1'
+};
+
+function sanitizeItems(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(x => ({
+    label: String(x.label || '').trim(),
+    value: String(x.value || ''),
+    category: (x.category && String(x.category).trim()) || 'Uncategorised'
+  })).filter(x => x.label && x.value);
+}
+
+function loadItemsLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE.items);
+    if (!raw) return [];
+    return sanitizeItems(JSON.parse(raw));
+  } catch { return []; }
+}
+
+function saveItemsLocal() {
+  localStorage.setItem(STORAGE.items, JSON.stringify(items));
+}
+
+// Always fetch the latest JSON from the network (bypass caches)
+async function fetchRemoteItems() {
+  const url = REMOTE_ITEMS_URL + '?v=' + Date.now(); // cache-buster
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const data = await resp.json();
+  return sanitizeItems(data);
+}
+
+// Try remote first → if it fails, fall back to local
+async function refreshFromRemote(showStatus = true) {
+  try {
+    if (showStatus) status.textContent = 'Refreshing from cloud…';
+  } catch {}
+  try {
+    const remote = await fetchRemoteItems();
+    items = remote;
+    saveItemsLocal();           // cache for offline
+    renderCategories();
+    renderList();
+    if (showStatus) status.textContent = `Loaded ${items.length} item(s) from cloud.`;
+  } catch (e) {
+    // Fall back to local storage
+    items = loadItemsLocal();
+    renderCategories();
+    renderList();
+    if (showStatus) status.textContent = `Cloud fetch failed; using local data (${items.length}).`;
+  }
+}
 
 // --- Elements ---
 const searchBox = document.getElementById('searchBox');
