@@ -267,9 +267,18 @@ copyCloseBtn.addEventListener('click', async () => {
 removeSelectedBtn.addEventListener('click', () => doRemoveSelected());
 addTextBtn.addEventListener('click', () => openAddTextDialog());
 
+
 addTextDialog.addEventListener('close', () => {
-  if (addTextDialog.returnValue === 'ok') confirmAddText();
+  if (addTextDialog.returnValue === 'ok') {
+    confirmAddText();
+  } else {
+    // Reset fields on cancel
+    dlgLabel.value = '';
+    dlgValue.value = '';
+    dlgCategory.value = '';
+  }
 });
+
 
 // Keyboard shortcuts on list (navigation + copy)
 itemList.addEventListener('keydown', async (e) => {
