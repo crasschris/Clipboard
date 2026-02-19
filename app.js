@@ -81,6 +81,13 @@ const dlgCategory = document.getElementById('dlgCategory');
 
 const autoClose = document.getElementById('autoClose');
 
+// Refresh button (optional)
+const refreshBtn = document.getElementById('refreshBtn');
+if (refreshBtn) {
+  refreshBtn.addEventListener('click', () => refreshFromRemote(true));
+}
+
+
 // --- Helpers ---
 function unique(arr){ return [...new Set(arr)]; }
 
@@ -335,9 +342,10 @@ itemList.addEventListener('keydown', async (e) => {
   }
 });
 
-// Initial render
-renderCategories();
-renderList();
+// Initial load: try cloud → fallback to local
+(async () => {
+  await refreshFromRemote(false);
+})();
 
 // Focus search at load for quick typing
 window.addEventListener('load', () => searchBox.focus());
