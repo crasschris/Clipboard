@@ -71,28 +71,33 @@
     <span id="status">Ready.</span>
   </footer>
 
-  <!-- Minimal “Add Text” dialog -->
-  <dialog id="addTextDialog">
-    <form method="dialog" class="dialog-form">
-      <h3>Add Text Item</h3>
-      <label>
-        Label
-        <input id="dlgLabel" type="text" placeholder="Display name (e.g., 'Next week Awaiting response.')" required />
-      </label>
-      <label>
-        Value
-        <textarea id="dlgValue" rows="3" placeholder="What gets copied to the clipboard…" required></textarea>
-      </label>
-      <label>
-        Category
-        <input id="dlgCategory" type="text" placeholder="(Optional) e.g., 'Phrases' or 'UPNs'" />
-      </label>
-      <menu class="dialog-actions">
-        <button type="button" id="dlgCancel">Cancel</button>
-        <button id="dlgOk" value="ok" class="primary">Add</button>
-      </menu>
-    </form>
-  </dialog>
+<!-- Add Text dialog -->
+<dialog id="addTextDialog">
+  <form method="dialog" class="dialog-form">
+    <h3>Add Text Item</h3>
+
+    <label>
+      Label
+      <input id="dlgLabel" type="text" required />
+    </label>
+
+    <label>
+      Value
+      <textarea id="dlgValue" rows="3" required></textarea>
+    </label>
+
+    <label>
+      Category
+      <input id="dlgCategory" type="text" />
+    </label>
+
+    <menu class="dialog-actions">
+      <!-- NOTE: type="button" so it does NOT submit the form -->
+      <button type="button" id="dlgCancel">Cancel</button>
+      <button id="dlgOk" value="ok" class="primary">Add</button>
+    </menu>
+  </form>
+</dialog>
 
 
   <!-- JS -->
