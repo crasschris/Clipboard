@@ -364,6 +364,101 @@ function confirmAddText(){
   status.textContent = `Added "${label}".`;
 }
 
+// ===== Export / Import (uses existing `items` + helpers) =====
+
+// Export the current in-memory items as JSON
+function exportItems() {
+  try {
+    // If you later add categories as a separate array, include them here.
+    const payload = {
+      format: 'quick-clipboard/v1',
+      exportedAt: new Date().toISOString(),
+      items: items   // <-- your current array
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: 'application/json;charset=utf-8'
+    });
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `quick-clipboard-export-${ts}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 0);
+    status.textContent = 'Exported clipboard items.';
+  } catch (err) {
+    console.error('Export failed:', err);
+    alert('Export failed. Check console for details.');
+  }
+}
+
+// Trigger the hidden file input
+function openImportPicker() {
+  const input = document.getElementById('importFile');
+  if (!input) {
+    alert('Import control not found.');
+    return;
+  }
+  input.value = ''; // allow re-selecting the same file
+  input.click();
+}
+
+// Handle file selection + merge (or replace) strategy
+function handleImportChange(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+
+      // Accept either { items: [...] } or a raw array [...]
+      const imported = Array.isArray(parsed) ? parsed
+                     : (parsed && Array.isArray(parsed.items) ? parsed.items : null);
+
+      if (!imported) throw new Error('Invalid file format. Expected an array or { items: [...] }.');
+
+      // Basic schema: need label + value at minimum
+      const valid = imported.filter(x => x && typeof x.label === 'string' && typeof x.value === 'string');
+
+      // Choose one strategy:
+      // A) Replace everything:
+      // items = valid;
+
+      // B) Merge (default): append new items, naïve de-dupe by label+value
+      const key = o => `${o.label}__${o.value}`;
+      const map = new Map(items.map(o => [key(o), o]));
+      for (const it of valid) if (!map.has(key(it))) map.set(key(it), it);
+      items = Array.from(map.values());
+
+      // Persist + re-render
+      saveItemsLocal();
+      renderCategories();
+      renderList();
+
+      status.textContent = `Imported ${valid.length} item(s).`;
+      alert(`Imported ${valid.length} item(s).`);
+    } catch (err) {
+      console.error('Import failed:', err);
+      alert('Import failed: ' + err.message);
+    } finally {
+      e.target.value = ''; // reset so same file can be picked again
+    }
+  };
+  reader.onerror = () => {
+    console.error('File read error:', reader.error);
+    alert('Could not read the selected file.');
+    e.target.value = '';
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+
+
+
 // --- Wire up ---
 
 searchBox.addEventListener('input', () => {
@@ -403,6 +498,15 @@ addTextDialog.addEventListener('close', () => {
   }
 });
 
+// Export / Import buttons
+const exportBtn = document.getElementById('exportBtn');
+if (exportBtn) exportBtn.addEventListener('click', exportItems);
+
+const importBtn = document.getElementById('importBtn');
+if (importBtn) importBtn.addEventListener('click', openImportPicker);
+
+const importFile = document.getElementById('importFile');
+if (importFile) importFile.addEventListener('change', handleImportChange);
 
 // Keyboard shortcuts on list (navigation + copy)
 itemList.addEventListener('keydown', async (e) => {
@@ -492,6 +596,190 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+// ===== Quick Clipboard: Export / Import wiring =====
+
+// --- Configuration: change these if you already use specific storage keys ---
+const QC_STORAGE_KEY = 'qcState'; // Everything saved under a single key
+// If you already store items differently (e.g. 'clipboardItems'), update below.
+
+// --- Helpers to get/set the app state (items + categories) ---
+
+function getState() {
+  // 1) Prefer an in-memory variable if you already keep one
+  if (window.qcState && Array.isArray(window.qcState.items)) {
+    return window.qcState;
+  }
+
+  // 2) Try a single JSON blob in localStorage (our default)
+  try {
+    const raw = localStorage.getItem(QC_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.items)) return parsed;
+    }
+  } catch (e) {
+    console.warn('Could not parse state from localStorage:', e);
+  }
+
+  // 3) Try common legacy keys (adjust if needed)
+  try {
+    const items = JSON.parse(localStorage.getItem('clipboardItems') || '[]');
+    const categories = JSON.parse(localStorage.getItem('clipboardCategories') || '[]');
+    if (Array.isArray(items)) {
+      return { items, categories, meta: { source: 'legacyKeys' } };
+    }
+  } catch { /* ignore */ }
+
+  // 4) Fallback: scrape minimal data from DOM (best-effort)
+  const domItems = Array.from(document.querySelectorAll('#itemList li')).map(li => ({
+    id: li.dataset.id || crypto.randomUUID(),
+    label: li.dataset.label || li.innerText.trim(),
+    value: li.dataset.value || li.innerText.trim(),
+    category: li.dataset.category || '',
+    created: Date.now(),
+    modified: Date.now()
+  }));
+  return { items: domItems, categories: [], meta: { source: 'dom' } };
+}
+
+function setState(next) {
+  // If you already keep a global state + render function, update & render:
+  window.qcState = next;
+  try {
+    localStorage.setItem(QC_STORAGE_KEY, JSON.stringify(next));
+  } catch (e) {
+    console.warn('Could not save state to localStorage:', e);
+  }
+
+  // If you have a function that redraws the UI, call it here:
+  if (typeof window.renderItems === 'function') {
+    window.renderItems(next.items);
+  } else if (typeof window.render === 'function') {
+    window.render(next);
+  }
+}
+
+// --- Export: download current state as JSON ---
+
+function exportState() {
+  try {
+    const state = getState();
+    const payload = {
+      format: 'quick-clipboard/v1',
+      exportedAt: new Date().toISOString(),
+      items: state.items || [],
+      categories: state.categories || [],
+      meta: state.meta || {}
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: 'application/json;charset=utf-8'
+    });
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `quick-clipboard-export-${ts}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 0);
+    setStatus('Exported clipboard items.');
+  } catch (err) {
+    console.error('Export failed:', err);
+    alert('Export failed. Open the console for details.');
+  }
+}
+
+// --- Import: choose file, then merge or replace ---
+
+function requestImportFile() {
+  const input = document.getElementById('importFile');
+  if (!input) return alert('Import control not found.');
+  input.value = '';       // allow selecting the same file twice
+  input.click();
+}
+
+function handleImportFileChange(evt) {
+  const file = evt.target.files && evt.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!parsed || !Array.isArray(parsed.items)) {
+        throw new Error('Invalid file format (missing items array).');
+      }
+
+      // Optional: schema check
+      const areValid = parsed.items.every(i => typeof i?.label === 'string' && typeof i?.value === 'string');
+      if (!areValid) {
+        throw new Error('Some items are invalid (need at least label & value).');
+      }
+
+      // Decide merge vs replace. Choose one of the two options:
+
+      const current = getState();
+
+      // Option A) Replace everything
+      // const next = {
+      //   items: parsed.items,
+      //   categories: parsed.categories || [],
+      //   meta: { ...current.meta, importedAt: Date.now(), format: parsed.format || 'unknown' }
+      // };
+
+      // Option B) Merge (default): append new items; naive de-dupe by label+value
+      const key = i => `${i.label}__${i.value}`;
+      const existingMap = new Map(current.items.map(i => [key(i), i]));
+      for (const it of parsed.items) {
+        if (!existingMap.has(key(it))) existingMap.set(key(it), it);
+      }
+      const next = {
+        items: Array.from(existingMap.values()),
+        categories: Array.from(new Set([...(current.categories || []), ...(parsed.categories || [])])),
+        meta: { ...current.meta, importedAt: Date.now(), format: parsed.format || 'unknown' }
+      };
+
+      setState(next);
+      setStatus(`Imported ${parsed.items.length} items.`);
+      alert(`Imported ${parsed.items.length} item(s).`);
+    } catch (err) {
+      console.error('Import failed:', err);
+      alert('Import failed: ' + err.message);
+    } finally {
+      evt.target.value = ''; // reset
+    }
+  };
+  reader.onerror = () => {
+    console.error('File read error:', reader.error);
+    alert('Could not read the selected file.');
+    evt.target.value = '';
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+// --- Wire up buttons once DOM is ready (defer already helps, but be safe) ---
+function wireExportImport() {
+  const btnExport = document.getElementById('exportBtn');
+  const btnImport = document.getElementById('importBtn');
+  const inputFile = document.getElementById('importFile');
+
+  btnExport?.addEventListener('click', exportState);
+  btnImport?.addEventListener('click', requestImportFile);
+  inputFile?.addEventListener('change', handleImportFileChange);
+}
+
+// Optional: simple status helper (writes to <span id="status">)
+function setStatus(msg) {
+  const el = document.getElementById('status');
+  if (el) el.textContent = msg;
+}
+
+// If your file is `defer`-loaded, DOM is ready; still guard for safety.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', wireExportImport);
+} else {
+  wireExportImport();
+}
 
 // Global typing autofocus (for super-fast workflow)
 window.addEventListener('keydown', (e) => {
